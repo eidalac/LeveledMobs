@@ -1,0 +1,92 @@
+distance: 10.0 #Distance in-Blocks after which the level increases
+
+multiplier: 0.5 #Number to input in health algorythm
+#Algorythm: MaxHealth + (MaxHealth * (trueDistance * multiplier))
+
+expMultiplier: 0.2 #Number to input in exp algorythm
+#Algorythm: BaseDroppedExp + BaseDroppedExp * (expMultiplier * lvl)
+
+damageMultiplier: 0.5 #Number to input in damage algorythm
+#Algorythm: BaseDamage + BaseDamage * (damageMultiplier * lvl)
+
+deathMessage: true #Set this to false if you do not want my custom death message!
+
+constantVisibility: true #Set this to true if you want mobs health and level visible at all times
+visibilityDistance: 10
+
+generalSettings:
+   worlds: [world,world_nether] #Put all the world names here of every world you want to use the Level system, has to be the EXACT same name as the folder of the world
+   worldLocations:
+      world: #start again here with the EXACT name of a world you listed in the list above!
+         exemptedMobs: [bat, pig, chicken, squid, sheep, horse] #Put all mobs here that should be exempted from the level system
+         centralSpawns: [spawn1,spawn2] #add any amount of spawns, you have to keep the name so the next would be spawn3, spawn4, spawn5 etc....
+         spawnLocations: #list all the locations you added to the list above below here just like the example i put there for you
+            spawn1:
+               x: 100
+               y: 100
+               z: 100
+            spawn2:
+               x: 500
+               y: 100
+               z: 500
+      world_nether:
+         exemptedMobs: [bat, pig, chicken, squid, sheep, horse] #Put all mobs here that should be exempted from the level system
+         centralSpawns: [spawn1, spawn2]
+         spawnLocations:
+            spawn1:
+               x: 100
+               y: 100
+               z: 100
+            spawn2:
+               x: 500
+               y: 100
+               z: 500
+
+#===================Mob Settings===================
+
+zombie:
+   giants:
+      enabled: true #Enabled Giants
+      chance: 2% #Chance from a normal Zombie spawn that a Giant spawns
+      level: 10 #Level after which they start to appear
+   armor:
+      enabled: true #Enable Zombies from spawning with armor
+      chance: 20% #Chance that this happens from a normal Zombie spawn
+      level: 20 #Number of levels after which it increases in tier so 1LVL-20LVL --> nothing, 21LVL-40LVL --> Leather etc
+
+skeleton:
+   armor:
+      enabled: true#Enable Skeletons from spawning with armor
+      chance: 20% #Chance that this happens from a normal Skeleton spawn
+      level: 10 #Number of levels after which it increases in tier so 1LVL-20LVL --> nothing, 21LVL-40LVL --> Leather etc
+
+#DONT TOUCH, THIS IS NOT RELEVANT YET!
+#eliteMobs:
+   #enabled: true
+   #includedMobs:[Spider,Zombie,Skeleton]
+   #chance: 1%
+#===================Legendary Items===================
+legendaryItems:
+   enabled: true
+   elites:
+      enabled: true
+      dropChance: 30%
+   normalMobs:
+      mobsThatDropLegendarys: [skeleton, zombie, ghast] #Declare all mobs to drop legendaries here
+      dropChance: 10%
+   legendaryNames: [TheStickOfBeating,GoldenShower]
+   
+   TheStickOfBeating:
+      material: STICK #Material to be used for item
+      name: The Stick of Beating #Displayname ingame, supports colourcode
+      lore: [A stick to whoop some booty!,Use at own Risk!] #String list of all lore you want to add
+      enchantments: [DAMAGE_ALL,KNOCKBACK] #List of all Enchantments
+      enchantmentLevels: [3,5] #Level of enchantments, 3 would correspond to DAMAGE_ALL and 5 to KNOCKBACK NOTE: Yuu can go from 0-32607 levels
+      dropLevel: 30 #MobLevel after which they drop
+   GoldenShower:
+      material: GOLD_SWORD
+      name: The Golden Shower
+      lore: [Its a spelling Mistake i swear!]
+      enchantments: [LOOT_BONUS_BLOCKS,KNOCKBACK]
+      enchantmentLevels: [3,6]
+      dropLevel: 50

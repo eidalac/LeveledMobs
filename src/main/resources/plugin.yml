@@ -1,0 +1,9 @@
+name: LeveledMobs
+main: org.shatteredrealms.leveledmobs.LeveledMobs
+version: 18.0
+
+commands:
+   lm:
+      description: Main LeveledMobs command
+
+softdepend: [WorldEdit, WorldGuard]
