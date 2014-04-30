@@ -9,6 +9,10 @@ expMultiplier: 0.2 #Number to input in exp algorythm
 damageMultiplier: 0.5 #Number to input in damage algorythm
 #Algorythm: BaseDamage + BaseDamage * (damageMultiplier * lvl)
 
+speedMultiplier: 0.01
+knockbackResistanceMultiplier: 0.05
+followRangeMultiplier: 0.002
+
 deathMessage: true #Set this to false if you do not want my custom death message!
 
 constantVisibility: true #Set this to true if you want mobs health and level visible at all times

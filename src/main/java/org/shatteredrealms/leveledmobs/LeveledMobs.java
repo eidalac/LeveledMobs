@@ -5,6 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
+import java.util.UUID;
+
+import net.minecraft.server.v1_7_R2.AttributeInstance;
+import net.minecraft.server.v1_7_R2.AttributeModifier;
+import net.minecraft.server.v1_7_R2.EntityInsentient;
+import net.minecraft.server.v1_7_R2.GenericAttributes;
+import org.bukkit.craftbukkit.v1_7_R2.entity.CraftLivingEntity;
 
 import org.mcstats.Metrics;
 import org.mcstats.Metrics.Graph;
@@ -40,9 +47,23 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.metadata.FixedMetadataValue;
+/*
+import net.minecraft.server.v1_7_R3.AttributeInstance;
+import net.minecraft.server.v1_7_R3.AttributeModifier;
+import net.minecraft.server.v1_7_R3.EntityInsentient;
+import net.minecraft.server.v1_7_R3.EntityLiving;
+import net.minecraft.server.v1_7_R3.GenericAttributes;
 
+import org.bukkit.craftbukkit.v1_7_R3.entity.CraftLivingEntity;
+*/
 public class LeveledMobs extends JavaPlugin implements Listener
-{	
+{
+	private static final UUID maxHealthUID = UUID.fromString("f8b0a945-2d6a-4bdb-9a6f-59c285bf1e5d");
+	private static final UUID followRangeUID = UUID.fromString("1737400d-3c18-41ba-8314-49a158481e1e");
+	private static final UUID knockbackResistanceUID = UUID.fromString("8742c557-fcd5-4079-a462-b58db99b0f2c");
+	private static final UUID movementSpeedUID = UUID.fromString("206a89dc-ae78-4c4d-b42c-3b31db3f5a7c");
+	private static final UUID attackDamageUID = UUID.fromString("7bbe3bb1-079d-4150-ac6f-669e71550776");
+
 	Boolean elites;
 	Boolean giants;
 	Boolean Sarmor;
@@ -847,6 +868,12 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		Damageable mob = null;
 		mob = ent;
 		
+//		ControllableMob<?> cmob = ControllableMobs.putUnderControl(ent);
+//		ControllableMobAttributes stats = cmob.getAttributes();
+//		Attribute health = stats.getMaxHealthAttribute(); 
+		
+//		health.attachModifier(AttributeModifierFactory.create(UUID.fromString("8971a510-ec88-11e2-91e2-0800200c9a66"), "LevelHealth", (level * multiplier),  ModifyOperation.MULTIPLY_FINAL_VALUE));
+
 		/**
 		 * Record and reset the max health in case this is called twice (as it is when we use lm spawnmob.
 		 * */
@@ -876,9 +903,21 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		ent.setHealth(mob.getMaxHealth());
 		//ent = (LivingEntity) mob;
 		mob = ent;
-
+//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs]  health test : Old = " + ent.getMaxHealth() + ".");
+		//setHealthMultiplier((level * multiplier), ent);
 		// set the name.
+		double damageMultiplier = getConfig().getDouble("damageMultiplier");
+		double speedMultiplier = getConfig().getDouble("speedMultiplier");
+		double knockbackResistanceMultiplier = getConfig().getDouble("knockbackResistanceMultiplier");
+		double followRangeMultiplier = getConfig().getDouble("followRangeMultiplier");
+		
+		setSpeedMultiplier(level * speedMultiplier, ent);
+		setKnockbackResistanceMultiplier(level * knockbackResistanceMultiplier, ent);
+		setDamageMultiplier((level*damageMultiplier), ent);
+		setFollowRangeMultiplier(level * followRangeMultiplier, ent);
+//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs]  health test : New = " + ent.getMaxHealth() + ".");
 
+		
 		/**
 		 * May add a config flag for this, to give some more options.
 		 * For now it's just level ## creature.
@@ -887,12 +926,108 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		ent.setCustomNameVisible(getConfig().getBoolean("constantVisibility"));
 	}
 
+	public void setHealthMultiplier(double multiplier, LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.a);
+		AttributeModifier modifier = new AttributeModifier(maxHealthUID, "LeveledMobs health multiplier", multiplier, 1);
+		
+		attributes.b(modifier);
+		attributes.a(modifier);
+	}
+	
+	public void clearHealthMultiplier(LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.a);
+		AttributeModifier modifier = new AttributeModifier(maxHealthUID, "LeveledMobs health multiplier", 1.0d, 1);
+		
+		attributes.b(modifier);
+	}	
+		
+	public void setFollowRangeMultiplier(double multiplier, LivingEntity entity)
+	{
+		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.b);
+		AttributeModifier modifier = new AttributeModifier(followRangeUID, "LeveledMobs follow range multiplier", multiplier, 1);
+
+		attributes.b(modifier);
+		attributes.a(modifier);
+	}
+
+	public void clearFollowRangeMultiplier(LivingEntity entity)
+	{
+		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.b);
+		AttributeModifier modifier = new AttributeModifier(followRangeUID, "LeveledMobs follow range multiplier", 1.0d, 1);
+
+		attributes.b(modifier);
+	}
+
+	public void setKnockbackResistanceMultiplier(double multiplier, LivingEntity entity)
+	{
+		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.c);
+		AttributeModifier modifier = new AttributeModifier(knockbackResistanceUID, "LeveledMobs knockback resistance multiplier", multiplier, 1);
+
+		attributes.b(modifier);
+		attributes.a(modifier);
+	}
+
+	public void clearKnockbackResistanceMultiplier(LivingEntity entity)
+	{
+		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.c);
+		AttributeModifier modifier = new AttributeModifier(knockbackResistanceUID, "LeveledMobs knockback resistance multiplier", 1.0d, 1);
+
+		attributes.b(modifier);
+	}
+	
+	public void setSpeedMultiplier(double multiplier, LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.d);
+		AttributeModifier modifier = new AttributeModifier(movementSpeedUID, "LeveledMobs movement speed multiplier", multiplier, 1);
+		
+		attributes.b(modifier);
+		attributes.a(modifier);
+	}
+	
+	public void clearSpeedMultiplier(LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.d);
+		AttributeModifier modifier = new AttributeModifier(movementSpeedUID, "LeveledMobs movement speed multiplier", 1.0d, 1);
+		
+		attributes.b(modifier);
+	}	
+
+	public void setDamageMultiplier(double multiplier, LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.e);
+		AttributeModifier modifier = new AttributeModifier(attackDamageUID, "LeveledMobs damage multiplier", multiplier, 1);
+		
+		attributes.b(modifier);
+		attributes.a(modifier);
+	}
+	
+	public void clearDamageMultiplier(LivingEntity entity)
+	{
+        EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.e);
+		AttributeModifier modifier = new AttributeModifier(attackDamageUID, "LeveledMobs damage multiplier", 1.0d, 1);
+		
+		attributes.b(modifier);
+	}		
+	
 	/**
 	 * Deals level based damaged
 	 * 
 	 * Tiddied up the code for my own readability.  No mechanical changes.
 	 * -- eidalac 4/26.
 	 * */
+/*
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void EntityDamageEvent(EntityDamageEvent e)
 	{
@@ -958,7 +1093,7 @@ public class LeveledMobs extends JavaPlugin implements Listener
 			
 		}
 	}
-
+*/
 	/**
 	 * Handles special loot drops on death.
 	 * 
