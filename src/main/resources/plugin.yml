@@ -6,4 +6,4 @@ commands:
    lm:
       description: Main LeveledMobs command
 
-softdepend: [WorldEdit, WorldGuard, ControllableMobsAPI]
+softdepend: [WorldEdit, WorldGuard]
