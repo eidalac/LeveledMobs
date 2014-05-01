@@ -61,6 +61,7 @@ public class LeveledMobs extends JavaPlugin implements Listener
 	private static final UUID maxHealthUID = UUID.fromString("f8b0a945-2d6a-4bdb-9a6f-59c285bf1e5d");
 	private static final UUID followRangeUID = UUID.fromString("1737400d-3c18-41ba-8314-49a158481e1e");
 	private static final UUID knockbackResistanceUID = UUID.fromString("8742c557-fcd5-4079-a462-b58db99b0f2c");
+	private static final UUID addknockbackResistanceUID = UUID.fromString("8742c557-fdd5-4079-a462-b58db99b0f2c");
 	private static final UUID movementSpeedUID = UUID.fromString("206a89dc-ae78-4c4d-b42c-3b31db3f5a7c");
 	private static final UUID attackDamageUID = UUID.fromString("7bbe3bb1-079d-4150-ac6f-669e71550776");
 
@@ -969,7 +970,14 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
 		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.c);
 		AttributeModifier modifier = new AttributeModifier(knockbackResistanceUID, "LeveledMobs knockback resistance multiplier", multiplier, 1);
-
+		AttributeModifier modifieradd = new AttributeModifier(addknockbackResistanceUID, "LeveledMobs knockback addition", 0.005, 0);
+		
+		if (attributes.getValue() == 0)
+		{
+			attributes.b(modifieradd);
+			attributes.a(modifieradd);
+		}
+		
 		attributes.b(modifier);
 		attributes.a(modifier);
 	}
@@ -979,8 +987,10 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
 		AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.c);
 		AttributeModifier modifier = new AttributeModifier(knockbackResistanceUID, "LeveledMobs knockback resistance multiplier", 1.0d, 1);
+		AttributeModifier modifieradd = new AttributeModifier(addknockbackResistanceUID, "LeveledMobs knockback addition", 0, 0);
 
 		attributes.b(modifier);
+		attributes.b(modifieradd);
 	}
 	
 	public void setSpeedMultiplier(double multiplier, LivingEntity entity)
