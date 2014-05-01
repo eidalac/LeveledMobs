@@ -1032,79 +1032,6 @@ public class LeveledMobs extends JavaPlugin implements Listener
 	}		
 	
 	/**
-	 * Deals level based damaged
-	 * 
-	 * Tiddied up the code for my own readability.  No mechanical changes.
-	 * -- eidalac 4/26.
-	 * */
-/*
-	@EventHandler(priority = EventPriority.HIGHEST)
-	public void EntityDamageEvent(EntityDamageEvent e)
-	{
-		if (! (e instanceof EntityDamageByEntityEvent))
-			return;
-	
-		// Not alive?  Ignore.
-		if (!(e.getEntity() instanceof LivingEntity))
-			return;
-					
-		LivingEntity ent = (LivingEntity)e.getEntity();	
-		String entWorld = ent.getWorld().getName().replace("CraftWorld{name=", "");
-		entWorld.replace("}", "");
-
-		// Not in the list of leveled mobs worlds?  Ignore.
-		if (! worlds.contains(entWorld))
-			return;
-		
-		String entityTypeName = ent.getClass().getName().toString().substring(ent.getClass().getName().toString().indexOf(".", 31) + 6, ent.getClass().getName().toString().length()).toLowerCase();
-		double damageMultiplier = getConfig().getDouble("damageMultiplier");
-
-		// Was this an attack/arrow damage?
-		if (e.getCause() == DamageCause.ENTITY_ATTACK || e.getCause() == DamageCause.PROJECTILE)
-		{
-			EntityDamageByEntityEvent event = (EntityDamageByEntityEvent) e;
-			
-			// Did a player do it?  Ignore it.
-			if (event.getDamager() instanceof Player)
-				return;
-			
-			// Did a villager get hit?  Ignore it.
-			if (e.getEntity() instanceof Villager)
-				return;
-			
-			// Does it have no level (and is not a player)?  Ignore it.
-			if (e.getEntity() instanceof LivingEntity && !(e.getEntity() instanceof Player))
-			{
-				if (getCreatureLevel((LivingEntity) e.getEntity()) == 0)
-					return;
-			}
-
-			//is the critter on the exempt list?  Ignore it.
-			if (getConfig().getStringList("generalSettings.worldLocations." + entWorld + ".exemptedMobs").contains(entityTypeName))
-				return;
-			
-			// If it was an projectile, get the shooters level for damage.
-			if (event.getDamager() instanceof Projectile)
-			{
-				Projectile r = (Projectile) event.getDamager();
-				if (r.getShooter() == null)
-					return;
-				
-				if (!(r.getShooter() instanceof LivingEntity))
-					return;
-								
-				e.setDamage(e.getDamage() + (e.getDamage() * (getCreatureLevel((LivingEntity) r.getShooter()) * damageMultiplier)));
-			}
-			else
-			{
-				// Otherwise, we have the attacker to get level from directly:
-				e.setDamage(e.getDamage() + (e.getDamage() * (getCreatureLevel((LivingEntity) event.getDamager()) * damageMultiplier)));
-			}
-			
-		}
-	}
-*/
-	/**
 	 * Handles special loot drops on death.
 	 * 
 	 * Tiddied up the code for my own readability.  No mechanical changes.
@@ -1261,26 +1188,4 @@ public class LeveledMobs extends JavaPlugin implements Listener
 
 		return legendary;
 	}
-
-	/**
-	 * Pulling IPs is not something I am comfortable with doing.
-	 * -- Eidalac 4/26
-	 * */
-/*
-	public String getIp()
-	{
-		String ip = null;
-		try {
-			URLConnection connection = new URL("http://api.externalip.net/ip").openConnection();
-			Scanner scanner = new Scanner(connection.getInputStream());
-			while (scanner.hasNext()) {
-				ip += scanner.next() + " ";
-			}
-			scanner.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return ip.replace("null", "");
-	}
-*/
 }
