@@ -11,8 +11,8 @@ import net.minecraft.server.v1_7_R2.AttributeInstance;
 import net.minecraft.server.v1_7_R2.AttributeModifier;
 import net.minecraft.server.v1_7_R2.EntityInsentient;
 import net.minecraft.server.v1_7_R2.GenericAttributes;
-import org.bukkit.craftbukkit.v1_7_R2.entity.CraftLivingEntity;
 
+import org.bukkit.craftbukkit.v1_7_R2.entity.CraftLivingEntity;
 import org.mcstats.Metrics;
 import org.mcstats.Metrics.Graph;
 import org.bukkit.Bukkit;
@@ -24,13 +24,14 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Skeleton;
+import org.bukkit.entity.Skeleton.SkeletonType;
+import org.bukkit.entity.Slime;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
@@ -39,23 +40,15 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.metadata.FixedMetadataValue;
-/*
-import net.minecraft.server.v1_7_R3.AttributeInstance;
-import net.minecraft.server.v1_7_R3.AttributeModifier;
-import net.minecraft.server.v1_7_R3.EntityInsentient;
-import net.minecraft.server.v1_7_R3.EntityLiving;
-import net.minecraft.server.v1_7_R3.GenericAttributes;
 
-import org.bukkit.craftbukkit.v1_7_R3.entity.CraftLivingEntity;
-*/
 public class LeveledMobs extends JavaPlugin implements Listener
 {
 	private static final UUID maxHealthUID = UUID.fromString("f8b0a945-2d6a-4bdb-9a6f-59c285bf1e5d");
@@ -64,6 +57,11 @@ public class LeveledMobs extends JavaPlugin implements Listener
 	private static final UUID addknockbackResistanceUID = UUID.fromString("8742c557-fdd5-4079-a462-b58db99b0f2c");
 	private static final UUID movementSpeedUID = UUID.fromString("206a89dc-ae78-4c4d-b42c-3b31db3f5a7c");
 	private static final UUID attackDamageUID = UUID.fromString("7bbe3bb1-079d-4150-ac6f-669e71550776");
+	
+	private double damageMultiplier;
+	private double speedMultiplier;
+	private double knockbackResistanceMultiplier;
+	private double followRangeMultiplier;
 
 	Boolean elites;
 	Boolean giants;
@@ -136,24 +134,6 @@ public class LeveledMobs extends JavaPlugin implements Listener
 
 			Graph serversThatUseLeveledMobs = metrics.createGraph("Servers and their player count");
 
-			/**
-			 * Pulling IPs is not something I am comfortable with doing.
-			 * Plus it's not in the list of items of what is sent to the stat site above.
-			 * -- Eidalac 4/26
-			 * */
-			//Graph serversThatUseLeveledMobsIp = metrics.createGraph("Servers ips and their player count");
-
-/*			serversThatUseLeveledMobsIp.addPlotter(new Metrics.Plotter(String.valueOf(getIp())) 
-			{
-
-				@Override
-				public int getValue() 
-				{
-					return Bukkit.getServer().getOnlinePlayers().length; // Number of players who used a diamond sword
-				}
-
-			});
-*/
 			serversThatUseLeveledMobs.addPlotter(new Metrics.Plotter(Bukkit.getMotd()) 
 			{
 
@@ -234,6 +214,11 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		this.getConfig().options().copyDefaults(true);
 		this.reloadConfig();
 
+		damageMultiplier = getConfig().getDouble("damageMultiplier");
+		speedMultiplier = getConfig().getDouble("speedMultiplier");
+		knockbackResistanceMultiplier = getConfig().getDouble("knockbackResistanceMultiplier");
+		followRangeMultiplier = getConfig().getDouble("followRangeMultiplier");		
+		
 		Zarmor = getConfig().getBoolean("zombie.armor.enabled");
 		Sarmor = getConfig().getBoolean("skeleton.armor.enabled");
 		giants = getConfig().getBoolean("zombie.giants.enabled");
@@ -699,7 +684,6 @@ public class LeveledMobs extends JavaPlugin implements Listener
 
 		//eliteSpawnChance = Double.valueOf(getConfig().getString("eliteMobs.chance").replace("%", ""));
 		//Tameable te = null;
-		Random r = new Random();
 
 		/**
 		 * Removed:  With the meta data used for levels and the name changed, this should not be needed.
@@ -752,6 +736,19 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		double dist = cregion.distance(ent.getLocation());
 		dist = Math.min(Math.ceil(dist/area), maxLevel);
 		final double trueDistance = dist;  
+		
+		doSetLevel(ent, trueDistance);
+	}
+
+	/**
+	 * Set up armor/equpiment for creatures based on level and config options.
+	 * 
+	 * Moved to it's own function.
+	 * - Eidalac 5/3.
+	 * */
+	private void doSetArmor(LivingEntity ent, double level)
+	{
+		Random r = new Random();
 		ItemStack[] equipment = null;
 
 		// Is it a zombol?
@@ -763,7 +760,7 @@ public class LeveledMobs extends JavaPlugin implements Listener
 			if (giants == true)
 			{
 				// We far enough out?
-				if (trueDistance > getConfig().getInt("zombie.giants.level"))
+				if (level > getConfig().getInt("zombie.giants.level"))
 				{
 					// Check % to spawn a giant instead.
 					int chance = Integer.valueOf(getConfig().getString("zombie.giants.chance").replace("%", ""));
@@ -777,7 +774,7 @@ public class LeveledMobs extends JavaPlugin implements Listener
 			if (Zarmor == true)
 			{			
 				double armorLevel = getConfig().getDouble("zombie.armor.level");
-				armorLevel = Math.ceil(trueDistance/armorLevel);
+				armorLevel = Math.ceil(level/armorLevel);
 				int spawnChance = Integer.valueOf(getConfig().getString("zombie.armor.chance").replace("%", ""));
 
 				if(r.nextInt(100) <= spawnChance)
@@ -818,10 +815,25 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		{					
 			Skeleton s = (Skeleton)ent;
 
+			// /lm spawnmob has an issue of spawning skellies withotu bows, so make sure it has a type and bow:
+			if (s.getSkeletonType() == SkeletonType.WITHER)
+			{
+				s.getEquipment().setItemInHand(new ItemStack(Material.STONE_SWORD));
+				s.setSkeletonType(SkeletonType.WITHER);
+			}
+			else if (s.getSkeletonType() == SkeletonType.NORMAL)
+			{
+				s.getEquipment().setItemInHand(new ItemStack(Material.BOW));
+				s.setSkeletonType(SkeletonType.NORMAL);
+			} else {
+				s.getEquipment().setItemInHand(new ItemStack(Material.BOW));
+				s.setSkeletonType(SkeletonType.NORMAL);
+			}
+			
 			if(Sarmor == true)
 			{			
 				double armorLevel = getConfig().getDouble("skeleton.armor.level");
-				armorLevel = Math.ceil(trueDistance/armorLevel);
+				armorLevel = Math.ceil(level/armorLevel);
 				int spawnChance = Integer.valueOf(getConfig().getString("skeleton.armor.chance").replace("%", ""));
 
 				if(r.nextInt(100) <= spawnChance)
@@ -852,11 +864,9 @@ public class LeveledMobs extends JavaPlugin implements Listener
 					}							
 				}
 			}
-		}
-		
-		doSetLevel(ent, trueDistance);
+		}		
 	}
-
+	
 	/**
 	 * Sets the level to the mob, seperate so we can spawn with /lm spawnmob
 	 * which we are using to spawn mobs at a specific level.
@@ -866,67 +876,43 @@ public class LeveledMobs extends JavaPlugin implements Listener
 	{
 		// Record the level to metadata:
 		ent.setMetadata("hasLevel", new FixedMetadataValue(this, level));
-		Damageable mob = null;
-		mob = ent;
 		
-//		ControllableMob<?> cmob = ControllableMobs.putUnderControl(ent);
-//		ControllableMobAttributes stats = cmob.getAttributes();
-//		Attribute health = stats.getMaxHealthAttribute(); 
-		
-//		health.attachModifier(AttributeModifierFactory.create(UUID.fromString("8971a510-ec88-11e2-91e2-0800200c9a66"), "LevelHealth", (level * multiplier),  ModifyOperation.MULTIPLY_FINAL_VALUE));
+		// check for armor:
+		doSetArmor(ent, level);
 
-		/**
-		 * Record and reset the max health in case this is called twice (as it is when we use lm spawnmob.
-		 * */
-        if (! (ent.hasMetadata("defaultHealth")))
-        {
-        	ent.setMetadata("defaultHealth", new FixedMetadataValue(this, mob.getMaxHealth()));
-        }
-        else
-        {
-        	mob.setMaxHealth(ent.getMetadata("defaultHealth").get(0).asDouble());
-        }
-
-		/**
-		 * Why do we need this check?  zombie health is 20 anyway, so I'm not sure why the special case for them.
-		 * -- Eidalac 4/26.
-		 * */
-		if(ent instanceof Zombie)
-		{
-			mob.setMaxHealth(Math.ceil(20 + ((20 * (level)) * multiplier)));
-		}
-		else
-		{
-			mob.setMaxHealth(Math.ceil(mob.getMaxHealth() + ((mob.getMaxHealth() * (level)) * multiplier)));
-		}
-
-		// record the new leveled health.
-		ent.setHealth(mob.getMaxHealth());
-		//ent = (LivingEntity) mob;
-		mob = ent;
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs]  health test : Old = " + ent.getMaxHealth() + ".");
-		//setHealthMultiplier((level * multiplier), ent);
-		// set the name.
-		double damageMultiplier = getConfig().getDouble("damageMultiplier");
-		double speedMultiplier = getConfig().getDouble("speedMultiplier");
-		double knockbackResistanceMultiplier = getConfig().getDouble("knockbackResistanceMultiplier");
-		double followRangeMultiplier = getConfig().getDouble("followRangeMultiplier");
-		
+		// Set the attributes:
+		setHealthMultiplier((level * multiplier), ent);
 		setSpeedMultiplier(level * speedMultiplier, ent);
 		setKnockbackResistanceMultiplier(level * knockbackResistanceMultiplier, ent);
-		setDamageMultiplier((level*damageMultiplier), ent);
 		setFollowRangeMultiplier(level * followRangeMultiplier, ent);
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs]  health test : New = " + ent.getMaxHealth() + ".");
-
 		
+		// It seems ghasts don't work with this attribute, as they do not have a melee attack at all.
+//		if (!(ent instanceof Ghast))
+		try {
+			setDamageMultiplier((level*damageMultiplier), ent);
+		} catch (NullPointerException x) {
+			// Slimes and ghasts don't work with this.
+			// Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs] Failed to set Damage for mob type " + ent.getType() + ".");
+		}
+
+		ent.setHealth(ent.getMaxHealth());
+
+		// set the name:
 		/**
 		 * May add a config flag for this, to give some more options.
 		 * For now it's just level ## creature.
 		 * */
-		ent.setCustomName("level " + (int) level + " " + ent.getType().toString().toLowerCase());
+		ent.setCustomName(capitalizeFirstLetter(ent.getType().toString().toLowerCase()) + ChatColor.GOLD + " [Lvl " + (int) level + "]" + ChatColor.RESET);
 		ent.setCustomNameVisible(getConfig().getBoolean("constantVisibility"));
 	}
 
+	public String capitalizeFirstLetter(String original)
+	{
+	    if(original.length() == 0)
+	        return original;
+	    return original.substring(0, 1).toUpperCase() + original.substring(1);
+	}	
+	
 	public void setHealthMultiplier(double multiplier, LivingEntity entity)
 	{
         EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
@@ -1030,6 +1016,85 @@ public class LeveledMobs extends JavaPlugin implements Listener
 		
 		attributes.b(modifier);
 	}		
+
+	
+ 	/**
+	 * Deals level based damaged
+	 * 
+	 * setDamageMultiplier() will only affect melee attacks, so we need to catch projectile damage here to
+	 * boost it as well.
+	 * 
+	 * Slimes have the same issue not using the attibute for damage (due to the way it scales on size), so 
+	 * have to use a special case for them as well.
+	 * 
+	 * -- eidalac 5/3.
+	 * */
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void EntityDamageEvent(EntityDamageEvent e)
+	{
+		if (! (e instanceof EntityDamageByEntityEvent))
+			return;
+
+		// Was this an projectile?  THats the only case we care about now.
+		if (e.getCause() != DamageCause.PROJECTILE)
+			return;
+		
+		// Not alive?  Ignore.
+		if (!(e.getEntity() instanceof LivingEntity))
+			return;
+
+		LivingEntity ent = (LivingEntity)e.getEntity();	
+		String entWorld = ent.getWorld().getName().replace("CraftWorld{name=", "");
+		entWorld.replace("}", "");
+
+		// Not in the list of leveled mobs worlds?  Ignore.
+		if (! worlds.contains(entWorld))
+			return;
+
+		String entityTypeName = ent.getClass().getName().toString().substring(ent.getClass().getName().toString().indexOf(".", 31) + 6, ent.getClass().getName().toString().length()).toLowerCase();
+
+		EntityDamageByEntityEvent event = (EntityDamageByEntityEvent) e;
+
+		// Did a player do it?  Ignore it.
+		if (event.getDamager() instanceof Player)
+			return;
+
+		// Did a villager get hit?  Ignore it.
+		if (e.getEntity() instanceof Villager)
+			return;
+
+		// Does it have no level (and is not a player)?  Ignore it.
+		if (!(e.getEntity() instanceof Player))
+		{
+			if (getCreatureLevel((LivingEntity) e.getEntity()) == 0) 
+				return;
+		}
+
+		//is the critter on the exempt list?  Ignore it.
+		if (getConfig().getStringList("generalSettings.worldLocations." + entWorld + ".exemptedMobs").contains(entityTypeName))
+			return;
+
+		// If it was an Projectile, get the shooters level for damage.
+		if (event.getDamager() instanceof Projectile)
+		{
+			Projectile r = (Projectile) event.getDamager();
+
+			if (r.getShooter() == null)
+				return;
+
+			if (!(r.getShooter() instanceof LivingEntity))
+				return;
+
+			e.setDamage(e.getDamage() + (e.getDamage() * (getCreatureLevel((LivingEntity) r.getShooter()) * damageMultiplier)));
+		}
+		else if (event.getDamager() instanceof Slime)
+		{
+			// Slimes don't use the damage attribue, so have to do them this way:
+			e.setDamage(e.getDamage() + (e.getDamage() * (getCreatureLevel((LivingEntity) event.getDamager()) * damageMultiplier)));
+		}
+	}
+
+	
 	
 	/**
 	 * Handles special loot drops on death.
@@ -1071,10 +1136,8 @@ public class LeveledMobs extends JavaPlugin implements Listener
 				Random r = new Random();
 				for(String legendaryItem : getConfig().getStringList("legendaryItems.legendaryNames"))
 				{
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs] elite drop | " + legendaryItem + "| Creature Level = " + creatureLevel + "| Drop Level = " + getConfig().getInt("legendaryItems." + legendaryItem + ".dropLevel"));
 					if(getConfig().getInt("legendaryItems." + legendaryItem + ".dropLevel") <= creatureLevel)
 					{
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs] adding elite drop | " + legendaryItem + "| Creature Level = " + creatureLevel);
 						legendaryItemList.add(createLegendary(legendaryItem));
 					}
 				}
@@ -1093,10 +1156,8 @@ public class LeveledMobs extends JavaPlugin implements Listener
 			{
 				for(String legendaryItem : getConfig().getStringList("legendaryItems.legendaryNames"))
 				{
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs] legendary drop | " + legendaryItem + "| Creature Level = " + creatureLevel + "| Drop Level = " + getConfig().getInt("legendaryItems." + legendaryItem + ".dropLevel"));
 					if(getConfig().getInt("legendaryItems." + legendaryItem + ".dropLevel") <= creatureLevel)
 					{
-//Bukkit.getServer().getConsoleSender().sendMessage("[LeveledMobs] adding drop | " + legendaryItem + "| Creature Level = " + creatureLevel);
 						legendaryItemList.add(createLegendary(legendaryItem));
 					}
 				}
@@ -1150,19 +1211,47 @@ public class LeveledMobs extends JavaPlugin implements Listener
 	/**
 	 * Returns the level of the entity, if any.  0 by default.
 	 * 
-	 * Gutted the old code that stored it in a custom name and read it from metadata.  Neater and should solve most of  the
-	 * conflicts this has had with other plugins, as it no longer cares what the name is.
-	 * -- Eidalac 4/25 
+	 * Now doing a reverse calculation based on attribute.
+	 * Using damage mod, but can use any, really, since the meta data isn't saved on a restart.
+	 * 
+	 * If there is not an attribute modifier, returns 0.
+	 * Otheriwise caculates level from the modifier and returns it.
+	 * 
+	 * I'd prefere to use damage, since health could be otherwise modified by other plugins/settings,
+	 * but I found that Ghasts throw an error on setting damage attribute modifiers, so that's not a good
+	 * option.
+	 *  
+	 * -- Eidalac 5/3
 	 * */
-	public int getCreatureLevel(LivingEntity ent)
+	public int getCreatureLevel(LivingEntity entity)
 	{
-		// Check for the level meta data:
-        if (ent.hasMetadata("hasLevel")) {
-            return ent.getMetadata("hasLevel").get(0).asInt();
-        }
-   	
-        // Default value of 0.
-        return 0;
+		// First, see if there is a valid meta data level stored:
+        if (entity.hasMetadata("hasLevel"))
+            return entity.getMetadata("hasLevel").get(0).asInt();
+   
+        // No meta data, so calculate it:
+		EntityInsentient nmsEntity = (EntityInsentient) ((CraftLivingEntity) entity).getHandle();
+        AttributeInstance attributes = nmsEntity.getAttributeInstance(GenericAttributes.a);
+		AttributeModifier mod = null;
+		
+		mod = attributes.a(maxHealthUID);
+		
+		// We haven't set an attribute value on this entity
+		if (mod == null)
+			return 0;
+
+		double m = mod.d();
+		
+		// Is it the default value?  treat it as level 0.
+		if (m == 1.0d)
+			return 0; 
+		
+		double l = (m/this.multiplier);
+		
+		// Store it to meta data to save time on the next lookup:
+		entity.setMetadata("hasLevel", new FixedMetadataValue(this, l));
+		
+		return (int) l;
 	}
 
 	public ItemStack createLegendary(String itemName)
